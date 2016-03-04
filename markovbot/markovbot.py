@@ -64,6 +64,10 @@ class MarkovBot():
 		# Starting value for the Twitter and TwitterStream instances
 		self._t = None
 		self._ts = None
+		# Create locks for these instances, so they won't be accessed at the
+		# same time by different threads.
+		self._tlock = Lock()
+		self._tslock = Lock()
 
 		# Create a Boolean that indicates whether the bot is logged in, and
 		# a placeholder for the credentials of the user that is logged in
@@ -88,8 +92,6 @@ class MarkovBot():
 		self._keywords = None
 		self._tweetprefix = None
 		self._tweetsuffix = None
-		self._tlock = Lock()
-		self._tslock = Lock()
 		if IMPTWITTER:
 			self._autoreplythreadlives = True
 			self._autoreplythread = Thread(target=self._autoreply)
@@ -98,6 +100,22 @@ class MarkovBot():
 			self._autoreplythread.start()
 		else:
 			self._autoreplythreadlives = False
+		
+		# Start the tweeting thread
+		self._autotweeting = False
+		self._tweetinginterval = None
+		self._tweetingjitter = None
+		self._tweetingkeywords = None
+		self._tweetingprefix = None
+		self._tweetingsuffix = None
+		if IMPTWITTER:
+			self._tweetingthreadlives = True
+			self._tweetingthread = Thread(target=self._autotweeting)
+			self._tweetingthread.daemon = True
+			self._tweetingthread.name = u'autotweeter'
+			self._tweetingthread.start()
+		else:
+			self._tweetingthreadlives = False
 
 
 	def clear_data(self):
@@ -516,6 +534,97 @@ class MarkovBot():
 		
 		# Get the bot's own user credentials
 		self._credentials = self._t.account.verify_credentials()
+	
+	
+	def twitter_tweeting_start(self, days=1, hours=0, minutes=0, jitter=0, \
+		keywords=None, prefix=None, suffix=None):
+		
+		"""Periodically posts a new tweet with generated text. You can
+		specify the interval between tweets in days, hours, or minutes, or
+		by using a combination of all. (Not setting anything will result in
+		the default value of a 1 day interval.) You can also add optional
+		jitter, which makes your bot a bit less predictable.
+		
+		Keyword arguments
+		
+		days			-	Numeric value (int or float) that indicates the
+						amount of days between each tweet.
+		
+		hours		-	Numeric value (int or float) that indicates the
+						amount of hours between each tweet.
+		
+		minutes		-	Numeric value (int or float) that indicates the
+						amount of minutes between each tweet.
+		
+		jitter		-	Integer or float that indicates the jitter (in
+						minutes!) that is applied to your tweet. The
+						jitter is uniform, and on both ends of the delay
+						value. For example, a jitter of 30 minutes on a
+						tweet interval of 12 hours, will result inactual
+						intervals between 11.5 and 12.5 hours.
+
+		prefix		-	A string that will be added at the start of each
+						tweet (no ending space required). Pass None if
+						you don't want a prefix. Default value is None.
+
+		suffix		-	A string that will be added at the end of each
+						tweet (no starting space required). Pass None if
+						you don't want a suffix. Default value is None.
+
+		keywords		-	A list of words from which one is randomly
+						selected and used to attempt to start a tweet
+						with. If None is passed, the bot will free-style.
+		"""
+		
+		# Raise an Exception if the twitter library wasn't imported
+		if not IMPTWITTER:
+			self._error(u'twitter_tweeting_start', \
+				u"The 'twitter' library could not be imported. Check whether it is installed correctly.")
+		
+		# Clean up the values
+		if not(days > 0) or (days == None):
+			days = 0
+		if not(hours > 0) or (hours == None):
+			hours = 0
+		if not(minutes > 0) or (minutes == None):
+			minutes = 0
+		# Calculate the tweet interval in minutes
+		tweetinterval = (days*24*60) + (hours*60) + minutes
+		# If the tweetinterval wasn't set, default to 1 day
+		# (Thats 24 hours * 60 minutes per hour = 1440 minutes)
+		if tweetinterval == 0:
+			tweetinterval = 1440
+		
+		# Update the autotweeting parameters
+		self._tweetinginterval = tweetinterval
+		self._tweetingjitter = jitter
+		self._tweetingkeywords = keywords
+		self._tweetingprefix = prefix
+		self._tweetingsuffix = suffix
+		
+		# Signal the _autotweet thread to continue
+		self._autotweeting = True
+	
+	
+	def twitter_tweeting_stop(self):
+		
+		"""Stops the periodical posting of tweets with generated text.
+		"""
+		
+		# Raise an Exception if the twitter library wasn't imported
+		if not IMPTWITTER:
+			self._error(u'twitter_tweeting_stop', \
+				u"The 'twitter' library could not be imported. Check whether it is installed correctly.")
+
+		# Update the autotweeting parameters
+		self._tweetinginterval = None
+		self._tweetingjitter = None
+		self._tweetingkeywords = None
+		self._tweetingprefix = None
+		self._tweetingsuffix = None
+		
+		# Signal the _autotweet thread to continue
+		self._autotweeting = False
 
 	
 	def _autoreply(self):
@@ -697,6 +806,66 @@ class MarkovBot():
 							self._error(u'_autoreply', u"Failed to post a reply: '%s'" % (u'unknown error'))
 					# Release the twitter lock
 					self._tlock.release()
+	
+	
+	def _autotweeting(self):
+		
+		"""Automatically tweets on a periodical basis.
+		"""
+
+		# Run indefinitively
+		while self._tweetingthreadlives:
+
+			# Wait a bit before rechecking whether tweeting should be
+			# started. It's highly unlikely the bot will miss something if
+			# it is a second late, and checking continuously is a waste of
+			# resources.
+			time.sleep(1)
+
+			# Only start when the bot logs in to twitter, and when tweeting
+			# is supposed to happen
+			while self._loggedin and self._autotweeting:
+				
+				# Choose a random keyword
+				if self._tweetingkeywords != None:
+					if type(self._tweetingkeywords) in \
+						[str, unicode]:
+						kw = self._tweetingkeywords
+					else:
+						kw = random.choice(self._tweetingkeywords)
+
+				# Construct a new tweet
+				newtweet = self._construct_tweet(seedword=kw, \
+					prefix=self._tweetingprefix, \
+					suffix=self._tweetingsuffix)
+
+				# Acquire the twitter lock
+				self._tlock.acquire(True)
+				# Reply to the incoming tweet
+				try:
+					# Post a new tweet
+					tweet = self._t.statuses.update(status=newtweet)
+					# Report to the console
+					self._message(u'_autotweeting', \
+						u'Posted tweet: %s' % (newtweet))
+					# Store a copy of the latest outgoing tweet, for
+					# debugging purposes
+					self._lasttweetout = copy.deepcopy(tweet)
+				except:
+					try:
+						self._error(u'_autoreply', u"Failed to post a reply: '%s'" % (sys.last_value))
+					except:
+						self._error(u'_autoreply', u"Failed to post a reply: '%s'" % (u'unknown error'))
+				# Release the twitter lock
+				self._tlock.release()
+				
+				# Determine the next tweeting interval in minutes
+				jitter = random.randint(-self._tweetingjitter, \
+					self._tweetingjitter)
+				interval = self._tweetinginterval + jitter
+				
+				# Sleep for the interval (in seconds, hence * 60)
+				time.sleep(interval*60)
 
 
 	def _check_file(self, filename, allowedext=None):
