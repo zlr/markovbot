@@ -846,16 +846,16 @@ class MarkovBot():
 					# Post a new tweet
 					tweet = self._t.statuses.update(status=newtweet)
 					# Report to the console
-					self._message(u'_autotweeting', \
+					self._message(u'_autotweet', \
 						u'Posted tweet: %s' % (newtweet))
 					# Store a copy of the latest outgoing tweet, for
 					# debugging purposes
 					self._lasttweetout = copy.deepcopy(tweet)
 				except:
 					try:
-						self._error(u'_autoreply', u"Failed to post a reply: '%s'" % (sys.last_value))
+						self._error(u'_autotweet', u"Failed to post a reply: '%s'" % (sys.last_value))
 					except:
-						self._error(u'_autoreply', u"Failed to post a reply: '%s'" % (u'unknown error'))
+						self._error(u'_autotweet', u"Failed to post a reply: '%s'" % (u'unknown error'))
 				# Release the twitter lock
 				self._tlock.release()
 				
@@ -865,6 +865,8 @@ class MarkovBot():
 				interval = self._tweetinginterval + jitter
 				
 				# Sleep for the interval (in seconds, hence * 60)
+				self._message(u'_autotweet', \
+					u'Next tweet in %d minutes.' % (interval))
 				time.sleep(interval*60)
 
 
