@@ -110,7 +110,7 @@ class MarkovBot():
 		self._tweetingsuffix = None
 		if IMPTWITTER:
 			self._tweetingthreadlives = True
-			self._tweetingthread = Thread(target=self._autotweeting)
+			self._tweetingthread = Thread(target=self._autotweet)
 			self._tweetingthread.daemon = True
 			self._tweetingthread.name = u'autotweeter'
 			self._tweetingthread.start()
@@ -808,7 +808,7 @@ class MarkovBot():
 					self._tlock.release()
 	
 	
-	def _autotweeting(self):
+	def _autotweet(self):
 		
 		"""Automatically tweets on a periodical basis.
 		"""
