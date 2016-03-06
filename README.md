@@ -9,12 +9,17 @@ make it generate random text. If you have a Twitter account, you can also make
 the bot automatically reply to tweets of your choice, and you can make it
 periocially tweet something.
 
+INSTALLATION
+------------
+
+Read [this post](http://www.pygaze.org/2016/03/how-to-code-twitter-bot/). It'll tell you all about installing this library and its dependencies.
+
 HELP
 ----
 
 For an explanation of Markov chains and Twitter bots, read [this post](http://www.pygaze.org/2016/03/sigmund-freud-twitter-bot/), and
-for a very thorough tutorial on how to make your own Twitter bot (using this
-library), [this post](http://www.pygaze.org/2016/03/how-to-code-twitter-bot/).
+for a very thorough tutorial on how to make your own Twitter bot by using this
+library, [this post](http://www.pygaze.org/2016/03/how-to-code-twitter-bot/).
 
 EXAMPLE
 -------
