@@ -128,15 +128,18 @@ class MarkovBot():
 		self.data = {}
 
 
-	def generate_text(self, length, seedword=None, verbose=False, \
+	def generate_text(self, maxlength, seedword=None, verbose=False, \
 		maxtries=100):
 		
 		"""Generates random text based on the provided database.
 		
 		Arguments
 		
-		length		-	An integer value indicating the amount of words
-						that need to be produced.
+		maxlength		-	An integer value indicating the amount of words
+						that can maximally be produced. The actual
+						number is determined by where interpunction
+						occurred. Text will be cut off at a comma,
+						full stop, and exclamation or question marks.
 		
 		Keyword Arguments
 		
@@ -225,7 +228,7 @@ class MarkovBot():
 				words = []
 				
 				# Loop to get as many words as requested
-				for i in xrange(length):
+				for i in xrange(maxlength):
 					# Add the current first word
 					words.append(w1)
 					# Generare a new first and second word, based on the
@@ -248,18 +251,33 @@ class MarkovBot():
 						(words[i] == u'i'):
 						words[i] = words[i].capitalize()
 				
-				# Remove any wrong interpunction from the last word
-				if words[-1][-1] in [u',', u';', u';']:
-					words[-1] = words[-1][:-1]
-				
+				# Find the last acceptable interpunction by looping
+				# through all generated words, last-to-first, and
+				# checking which is the last word that contains
+				# relevant interpunction.
+				ei = 0
+				for i in xrange(len(words)-1, 0, -1):
+					# Check whether the current word ends with
+					# relevant interpunction. If it does, use the
+					# current as the last word. If the interpunction
+					# is not appropriate for ending a sentence with,
+					# change it to a full stop.
+					if words[i][-1] in [u'.', u'!', u'?']:
+						ei = i+1
+					elif words[i][-1] in [u',', u';', u':']:
+						ei = i+1
+						words[i][-1] = u'.'
+					# Break if we found a word with interpunction.
+					if ei > 0:
+						break
+				# Cut back to the last word with stop-able interpunction
+				words = words[:ei]
+
 				# Combine the words into one big sentence
 				sentence = u' '.join(words)
-					
-				# Add a full stop to the end of the sentence
-				if sentence[-1] not in [u'.', u'!', u'?']:
-					sentence += u'.'
-				
-				error = False
+
+				if sentence != u'':
+					error = False
 				
 			# If the above code fails
 			except:
@@ -526,10 +544,10 @@ class MarkovBot():
 			self._error(u'twitter_login', u"The 'twitter' library could not be imported. Check whether it is installed correctly.")
 		
 		# Log in to a Twitter account
-		self._t = twitter.Twitter(auth=twitter.OAuth(access_token, \
-			access_token_secret, cons_key, cons_secret))
-		self._ts = twitter.TwitterStream(auth=twitter.OAuth(access_token, \
-			access_token_secret, cons_key, cons_secret))
+		self._oauth = twitter.OAuth(access_token, access_token_secret, \
+			cons_key, cons_secret)
+		self._t = twitter.Twitter(auth=self._oauth)
+		self._ts = twitter.TwitterStream(auth=self._oauth)
 		self._loggedin = True
 		
 		# Get the bot's own user credentials
@@ -663,6 +681,14 @@ class MarkovBot():
 					# Get a new Tweet (this will block until a new tweet
 					# becomes available)
 					tweet = iterator.next()
+					
+					# Restart the connection if this is a 'hangup'
+					# notification, which will be {'hangup':True}
+					if u'hangup' in tweet.keys():
+						# Reanimate the Twitter connection.
+						self._twitter_reconnect()
+						# Skip further processing.
+						continue
 					
 					# Store a copy of the latest incoming tweet, for
 					# debugging purposes
@@ -852,10 +878,20 @@ class MarkovBot():
 					# debugging purposes
 					self._lasttweetout = copy.deepcopy(tweet)
 				except:
+					# Reconnect to Twitter.
+					self._twitter_reconnect()
+					# Try to post again.
 					try:
-						self._error(u'_autotweet', u"Failed to post a reply: '%s'" % (sys.last_value))
-					except:
-						self._error(u'_autotweet', u"Failed to post a reply: '%s'" % (u'unknown error'))
+						# Post a new tweet
+						tweet = self._t.statuses.update(status=newtweet)
+						# Report to the console
+						self._message(u'_autotweet', \
+							u'Posted tweet: %s' % (newtweet))
+						# Store a copy of the latest outgoing tweet,
+						# for debugging purposes
+						self._lasttweetout = copy.deepcopy(tweet)
+					except Exception as e:
+						self._error(u'_autotweet', u"Failed to post a tweet! Error: '%s'" % (e))
 				# Release the twitter lock
 				self._tlock.release()
 				
@@ -1035,4 +1071,28 @@ class MarkovBot():
 		
 		for i in range(len(words) - 2):
 			yield (words[i], words[i+1], words[i+2])
+
+	
+	def _twitter_reconnect(self):
+		
+		"""Logs in to Twitter, using the stored OAuth. This function is
+		intended for internal use, and should ONLY be called after
+		twitter_login has been called.
+		"""
+		
+		# Report the reconnection attempt.
+		self._message(u'_twitter_reconnect', \
+			u"Attempting to reconnect to Twitter.")
+		
+		# Raise an Exception if the twitter library wasn't imported
+		if not IMPTWITTER:
+			self._error(u'_twitter_reconnect', u"The 'twitter' library could not be imported. Check whether it is installed correctly.")
+		
+		# Log in to a Twitter account
+		self._t = twitter.Twitter(auth=self._oauth)
+		self._ts = twitter.TwitterStream(auth=self._oauth)
+		self._loggedin = True
+		
+		# Get the bot's own user credentials
+		self._credentials = self._t.account.verify_credentials()
 		
