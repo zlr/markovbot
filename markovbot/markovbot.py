@@ -853,6 +853,7 @@ class MarkovBot():
 			while self._loggedin and self._autotweeting:
 				
 				# Choose a random keyword
+				kw = None
 				if self._tweetingkeywords != None:
 					if type(self._tweetingkeywords) in \
 						[str, unicode]:
