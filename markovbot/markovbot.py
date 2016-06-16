@@ -92,6 +92,7 @@ class MarkovBot():
 		self._keywords = None
 		self._tweetprefix = None
 		self._tweetsuffix = None
+		self._mindelay = 0.0
 		if IMPTWITTER:
 			self._autoreplythreadlives = True
 			self._autoreplythread = Thread(target=self._autoreply)
@@ -410,7 +411,7 @@ class MarkovBot():
 	
 	
 	def twitter_autoreply_start(self, targetstring, keywords=None,
-			prefix=None, suffix=None, maxconvdepth=None):
+			prefix=None, suffix=None, maxconvdepth=None, mindelay=1.5):
 		
 		"""Starts the internal Thread that replies to all tweets that match
 		the target string.
@@ -458,6 +459,9 @@ class MarkovBot():
 						to a very specific hashtag or your own Twitter
 						handle (i.e. a situation in which the bot is
 						sollicited to respond). Default value is None.
+		
+		mindelay		-	A float that indicates the minimal time
+						between tweets in minutes. Default is 1.5
 		"""
 		
 		# Raise an Exception if the twitter library wasn't imported
@@ -471,6 +475,7 @@ class MarkovBot():
 		self._tweetprefix = prefix
 		self._tweetsuffix = suffix
 		self._maxconvdepth = maxconvdepth
+		self._mindelay = mindelay
 		
 		# Signal the _autoreply thread to continue
 		self._autoreplying = True
@@ -833,13 +838,13 @@ class MarkovBot():
 						# Store a copy of the latest outgoing tweet, for
 						# debugging purposes
 						self._lasttweetout = copy.deepcopy(resp)
-					except:
-						try:
-							self._error(u'_autoreply', u"Failed to post a reply: '%s'" % (sys.last_value))
-						except:
-							self._error(u'_autoreply', u"Failed to post a reply: '%s'" % (u'unknown error'))
+					except Exception, e:
+						self._error(u'_autoreply', u"Failed to post a reply: '%s'" % (e))
 					# Release the twitter lock
 					self._tlock.release()
+					
+					# Wait for the minimal tweeting delay.
+					time.sleep(60.0*self._mindelay)
 	
 	
 	def _autotweet(self):
