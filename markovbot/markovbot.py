@@ -678,9 +678,17 @@ class MarkovBot():
 				# Only check for tweets when autoreplying
 				while self._autoreplying:
 					
-					# Get a new Tweet (this will block until a new tweet
-					# becomes available)
-					tweet = iterator.next()
+					# Get a new Tweet (this will block until a new
+					# tweet becomes available, but can also raise a
+					# StopIteration Exception every now and again.)
+					try:
+						# Attempt to get the next tweet.
+						tweet = iterator.next()
+					except StopIteration:
+						# Restart the iterator, and skip the rest of
+						# the loop.
+						iterator = self._ts.statuses.filter(track=self._targetstring)
+						continue
 					
 					# Restart the connection if this is a 'hangup'
 					# notification, which will be {'hangup':True}
