@@ -55,7 +55,7 @@ class MarkovBot():
 		# DATA
 
 		# Create an empty dict for the data
-		self.data = {}
+		self.data = {u'default':{}}
 		
 
 		# # # # #
@@ -88,6 +88,7 @@ class MarkovBot():
 		
 		# Start the autoreplying thread
 		self._autoreplying = False
+		self._autoreply_database = None
 		self._targetstring = None
 		self._keywords = None
 		self._tweetprefix = None
@@ -103,6 +104,7 @@ class MarkovBot():
 			self._autoreplythreadlives = False
 		
 		# Start the tweeting thread
+		self._tweetingdatabase = None
 		self._autotweeting = False
 		self._tweetinginterval = None
 		self._tweetingjitter = None
@@ -119,18 +121,30 @@ class MarkovBot():
 			self._tweetingthreadlives = False
 
 
-	def clear_data(self):
+	def clear_data(self, database=None):
 		
 		"""Clears the current internal data. NOTE: This does not remove
 		existing pickled data!
+		
+		Keyword Arguments
+		
+		database		-	A string that indicates the name of the
+						specific database that you want to clear,
+						or None to clear all data. (default = None)
 		"""
 		
 		# Overwrite data
-		self.data = {}
+		if database == None:
+			self.data = {'default':{}}
+		else:
+			try:
+				self.data.pop(database)
+			except KeyError:
+				self._error(u'clear_data', u"There was no database named '%s'" % (database))
 
 
-	def generate_text(self, maxlength, seedword=None, verbose=False, \
-		maxtries=100):
+	def generate_text(self, maxlength, seedword=None, database=u'default',
+		verbose=False, maxtries=100):
 		
 		"""Generates random text based on the provided database.
 		
@@ -152,6 +166,11 @@ class MarkovBot():
 						one-by-one until a word is found that is in the
 						database.
 		
+		database		-	A string that indicates the name of the
+						specific database that you want to use to
+						generate the text, or u'default' to use the
+						default database. (default = 'default')
+
 		verbose		-	Boolean that indicates whether this function
 						should bother you with excessibe and unnecessary
 						messages whenever it can't immeadiately produce
@@ -170,8 +189,8 @@ class MarkovBot():
 		"""
 		
 		# Raise an Exception when no data exists
-		if self.data == {}:
-			self._error(u'generate_text', u'No data is available yet. Did you read any data yet?')
+		if self.data[database] == {}:
+			self._error(u'generate_text', u"No data is available yet in database '%s'. Did you read any data yet?" % (database))
 		
 		# Sometimes, for mysterious reasons, a word duo does not appear as a
 		# key in the database. This results in a KeyError, which is highly
@@ -190,7 +209,7 @@ class MarkovBot():
 			
 			try:
 				# Get all word duos in the database
-				keys = self.data.keys()
+				keys = self.data[database].keys()
 				# Shuffle the word duos, so that not the same is
 				# found every time
 				random.shuffle(keys)
@@ -239,7 +258,7 @@ class MarkovBot():
 					# this list is selected. Note: words can occur more
 					# than once in this list, thus more likely word
 					# combinations are more likely to be selected here.
-					w1, w2 = w2, random.choice(self.data[(w1, w2)])
+					w1, w2 = w2, random.choice(self.data[database][(w1, w2)])
 				
 				# Add the final word to the generated words
 				words.append(w2)
@@ -310,7 +329,7 @@ class MarkovBot():
 			pickle.dump(self.data, f)
 		
 	
-	def read(self, filename, overwrite=False):
+	def read(self, filename, database=u'default', overwrite=False):
 		
 		"""Reads a text, and adds its stats to the internal data. Use the
 		mode keyword to overwrite the existing data, or to add the new
@@ -325,6 +344,11 @@ class MarkovBot():
 		
 		Keyword Arguments
 		
+		database		-	A string that indicates the name of the
+						specific database that you want to add the
+						file's data to, or u'default' to add to the
+						default database. (default = 'default')
+
 		overwrite		-	Boolean that indicates whether the existing data
 						should be overwritten (True) or not (False). The
 						default value is False.
@@ -332,7 +356,7 @@ class MarkovBot():
 		
 		# Clear the current data if required
 		if overwrite:
-			self.clear_data()
+			self.clear_data(database=database)
 		
 		# Check whether the file exists
 		if not self._check_file(filename):
@@ -348,6 +372,12 @@ class MarkovBot():
 		# Split the words into a list
 		words = contents.split()
 		
+		# Create a new database if this is required.
+		if not database in self.data.keys():
+			self._message(u'read', \
+			u"Creating new database '%s'" % (database))
+			self.data[database] = {}
+		
 		# Add the words and their likely following word to the database
 		for w1, w2, w3 in self._triples(words):
 			# Only use actual words and words with minimal interpunction
@@ -356,14 +386,14 @@ class MarkovBot():
 				# The key is a duo of words
 				key = (w1, w2)
 				# Check if the key is already part of the database dict
-				if key in self.data:
+				if key in self.data[database]:
 					# If the key is already in the database dict,
 					# add the third word to the list
-					self.data[key].append(w3)
+					self.data[database][key].append(w3)
 				else:
 					# If the key is not in the database dict yet, first
 					# make a new list for it, and then add the new word
-					self.data[key] = [w3]
+					self.data[database][key] = [w3]
 	
 	
 	def read_pickle_data(self, filename, overwrite=False):
@@ -393,25 +423,27 @@ class MarkovBot():
 		
 		# Store the data internally
 		if overwrite:
-			self.clear_data()
+			self.clear_data(database=None)
 			self.data = copy.deepcopy(data)
 		else:
-			for key in data:
-				# If the key is not in the existing dataset yet, add it,
-				# then copy the loaded data into the existing data
-				if key not in self.data.keys():
-					self.data[key] = copy.deepcopy(data[key])
-				# If the key is already in the existing data, add the
-				# loaded data to the existing list
-				else:
-					self.data[key].extend(copy.deepcopy(data[key]))
+			for database in data.keys():
+				for key in data[database].keys():
+					# If the key is not in the existing dataset yet, add it,
+					# then copy the loaded data into the existing data
+					if key not in self.data[database].keys():
+						self.data[database][key] = copy.deepcopy(data[database][key])
+					# If the key is already in the existing data, add the
+					# loaded data to the existing list
+					else:
+						self.data[database][key].extend(copy.deepcopy(data[database][key]))
 		
 		# Get rid of the loaded data
 		del data
 	
 	
-	def twitter_autoreply_start(self, targetstring, keywords=None,
-			prefix=None, suffix=None, maxconvdepth=None, mindelay=1.5):
+	def twitter_autoreply_start(self, targetstring, database=u'default',
+		keywords=None, prefix=None, suffix=None, maxconvdepth=None,
+		mindelay=1.5):
 		
 		"""Starts the internal Thread that replies to all tweets that match
 		the target string.
@@ -427,6 +459,20 @@ class MarkovBot():
 		
 		Keyword Arguments
 		
+		database		-	A string that indicates the name of the
+						specific database that you want to use to
+						generate tweets, or u'default' to use the
+						default database. You can also use the
+						string 'auto-language' to make the bot
+						automatically detect the language of Tweets,
+						and to reply using a database with the same
+						name (e.g. 'en' for English, or 'de' for
+						German). Note that this option relies on
+						Twitter's language-detection algorithms. If
+						a language cannot be identified, the
+						fall-back will be 'en', or 'default' when
+						'en' is not available. (default = 'default')
+
 		keywords		-	A list of words that the bot should recognise in
 						tweets that it finds through its targetstring.
 						The bot will attempt to use the keywords it finds
@@ -470,6 +516,7 @@ class MarkovBot():
 				u"The 'twitter' library could not be imported. Check whether it is installed correctly.")
 		
 		# Update the autoreply parameters
+		self._autoreply_database = database
 		self._targetstring = targetstring
 		self._keywords = keywords
 		self._tweetprefix = prefix
@@ -488,27 +535,6 @@ class MarkovBot():
 		
 		For an explanation of the target string, see the Twitter dev site:
 		https://dev.twitter.com/streaming/overview/request-parameters#track
-		
-		Arguments
-		
-		targetstring	-	String that the bot should look out for. For
-						more specific information, see Twitter's
-						developer website (URL mentioned above).
-		
-		Keyword Arguments
-		
-		keywords		-	A list of words that the bot should recognise in
-						tweets that it finds through its targetstring.
-						The bot will attempt to use the keywords it finds
-						to start its reply with. If more than one
-						keyword occurs in a tweet, the position of each
-						word in the keywords list will determine its
-						priority. I.e. if both keywords[0] and
-						keywords[1] occur in a tweet, an attempt will be
-						made to reply with keywords[0] first. If that
-						does not exist in the database, the next keyword
-						that was found in a tweet will be used (provided
-						it occurs in the keywords list).
 		"""
 		
 		# Raise an Exception if the twitter library wasn't imported
@@ -517,6 +543,7 @@ class MarkovBot():
 				u"The 'twitter' library could not be imported. Check whether it is installed correctly.")
 		
 		# Update the autoreply parameters
+		self._autoreply_database = None
 		self._targetstring = None
 		self._keywords = None
 		self._tweetprefix = None
@@ -536,7 +563,7 @@ class MarkovBot():
 
 		cons_key		-	String of your Consumer Key (API Key)
 
-		cons_secret	-	String of your Consumer Secret (API Secret)
+		cons_secret		-	String of your Consumer Secret (API Secret)
 
 		access_token	-	String of your Access Token
 
@@ -559,8 +586,8 @@ class MarkovBot():
 		self._credentials = self._t.account.verify_credentials()
 	
 	
-	def twitter_tweeting_start(self, days=1, hours=0, minutes=0, jitter=0, \
-		keywords=None, prefix=None, suffix=None):
+	def twitter_tweeting_start(self, database=u'default', days=1, hours=0, \
+		minutes=0, jitter=0, keywords=None, prefix=None, suffix=None):
 		
 		"""Periodically posts a new tweet with generated text. You can
 		specify the interval between tweets in days, hours, or minutes, or
@@ -570,10 +597,19 @@ class MarkovBot():
 		
 		Keyword arguments
 		
+		database		-	A string that indicates the name of the
+						specific database that you want to use to
+						generate tweets, or u'default' to use the
+						default database. You can also use the
+						string 'random-database' to make the bot
+						choose one of the databases at random. Note
+						that it will not randomly choose 'default'
+						if 'default is empty. (default = 'default')
+
 		days			-	Numeric value (int or float) that indicates the
 						amount of days between each tweet.
 		
-		hours		-	Numeric value (int or float) that indicates the
+		hours			-	Numeric value (int or float) that indicates the
 						amount of hours between each tweet.
 		
 		minutes		-	Numeric value (int or float) that indicates the
@@ -619,6 +655,7 @@ class MarkovBot():
 			tweetinterval = 1440
 		
 		# Update the autotweeting parameters
+		self._tweetingdatabase = database
 		self._tweetinginterval = tweetinterval
 		self._tweetingjitter = jitter
 		self._tweetingkeywords = keywords
@@ -640,6 +677,7 @@ class MarkovBot():
 				u"The 'twitter' library could not be imported. Check whether it is installed correctly.")
 
 		# Update the autotweeting parameters
+		self._tweetingdatabase = None
 		self._tweetinginterval = None
 		self._tweetingjitter = None
 		self._tweetingkeywords = None
@@ -784,6 +822,33 @@ class MarkovBot():
 							self._message(u'_autoreply', \
 								u"This tweet is part of a conversation, and I don't reply to conversations with over %d tweets." % (self._maxconvdepth))
 							continue
+					
+					# Detect the language of the tweet, if the
+					# language of the reply depends on it.
+					if self._autoreply_database == u'auto-language':
+						# Get the language of the tweet, or default
+						# to English if it isn't available.
+						if u'lang' in tweet.keys():
+							lang = tweet[u'lang'].lower()
+							self._message(u'_autoreply', u"I detected language: '%s'." % (lang))
+						else:
+							lang = u'en'
+							self._message(u'_autoreply', u"I couldn't detect the language, so I defaulted to '%s'." % (lang))
+						# Check if the language is available in the
+						# existing dicts. Select the associated
+						# database, or default to English when the
+						# detected language isn't available, or
+						# default to u'default' when English is not
+						# available.
+						if lang in self.data.keys():
+							database = lang
+							self._message(u'_autoreply', u"I chose database: '%s'." % (database))
+						elif u'en' in self.data.keys():
+							database = u'en'
+							self._message(u'_autoreply', u"There was no database for detected language '%s', so I defaulted to '%s'." % (lang, database))
+						else:
+							database = u'default'
+							self._message(u'_autoreply', u"There was no database for detected language '%s', nor for 'en', so I defaulted to '%s'." % (lang, database))
 	
 					# Separate the words in the tweet
 					tw = tweet[u'text'].split()
@@ -820,8 +885,8 @@ class MarkovBot():
 							self._tweetprefix)
 
 					# Construct a new tweet
-					response = self._construct_tweet(seedword=None, \
-						prefix=prefix, suffix=self._tweetsuffix)
+					response = self._construct_tweet(database=database, \
+						seedword=None, prefix=prefix, suffix=self._tweetsuffix)
 
 					# Acquire the twitter lock
 					self._tlock.acquire(True)
@@ -873,10 +938,21 @@ class MarkovBot():
 						kw = self._tweetingkeywords
 					else:
 						kw = random.choice(self._tweetingkeywords)
+				
+				# Choose the database to use. If the database should be
+				# random, then randomly choose a non-empty database.
+				if self._tweetingdatabase == u'random-database':
+					database = random.choice(self.data.keys())
+					while self.data[database] == {}:
+						database = random.choice(self.data.keys())
+					self._message(u'_autotweet', \
+						u'Randomly chose database: %s' % (database))
+				else:
+					database = self._tweetingdatabase
 
 				# Construct a new tweet
-				newtweet = self._construct_tweet(seedword=kw, \
-					prefix=self._tweetingprefix, \
+				newtweet = self._construct_tweet(database=database, \
+					seedword=kw, prefix=self._tweetingprefix, \
 					suffix=self._tweetingsuffix)
 
 				# Acquire the twitter lock
@@ -953,7 +1029,8 @@ class MarkovBot():
 		return ok
 	
 	
-	def _construct_tweet(self, seedword=None, prefix=None, suffix=None):
+	def _construct_tweet(self, database=u'default', seedword=None, \
+		prefix=None, suffix=None):
 		
 		"""Constructs a text for a tweet, based on the current Markov chain.
 		The text will be of a length of 140 characters or less, and will
@@ -969,6 +1046,11 @@ class MarkovBot():
 						one-by-one until a word is found that is in the
 						database. Default value is None.
 		
+		database		-	A string that indicates the name of the
+						specific database that you want to use to
+						generate the text, or u'default' to use the
+						default database. (default = 'default')
+
 		prefix		-	A string that will be added at the start of each
 						tweet (no ending space required). Pass None if
 						you don't want a prefix. Default value is None.
@@ -985,9 +1067,9 @@ class MarkovBot():
 		sl = 20
 		response = u''
 		while response == u'' or len(response) > 140:
-			# Generate some random response text
-			response = self.generate_text(sl, seedword=seedword,
-				verbose=False, maxtries=100)
+			# Generate some random text
+			response = self.generate_text(sl, seedword=seedword, \
+				database=database, verbose=False, maxtries=100)
 			# Add the prefix
 			if prefix != None:
 				response = u'%s %s' % (prefix, response)
