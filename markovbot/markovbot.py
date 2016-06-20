@@ -1110,3 +1110,7 @@ class MarkovBot():
 		# Get the bot's own user credentials
 		self._credentials = self._t.account.verify_credentials()
 		
+		# Report the reconnection success.
+		self._message(u'_twitter_reconnect', \
+			u"Successfully reconnected to Twitter!")
+		
