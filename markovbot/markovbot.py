@@ -476,7 +476,7 @@ class MarkovBot():
 						option is to use database='random-database',
 						which will select one of the non-empty
 						databases that are available to this bot.
-						(default = 'default')
+						Default value is 'default'.
 
 		keywords		-	A list of words that the bot should recognise in
 						tweets that it finds through its targetstring.
@@ -491,13 +491,17 @@ class MarkovBot():
 						that was found in a tweet will be used (provided
 						it occurs in the keywords list).
 
-		prefix		-	A string that will be added at the start of each
-						tweet (no ending space required). Pass None if
-						you don't want a prefix. Default value is None.
+		prefix		-	A string that will be added at the start of
+						each tweet (no ending space required), or a
+						list of potential prefixes from which one
+						will be chosen at random. Pass None if you
+						don't want a prefix. Default value is None.
 
-		suffix		-	A string that will be added at the end of each
-						tweet (no starting space required). Pass None if
-						you don't want a suffix. Default value is None.
+		suffix		-	A string that will be added at the end of
+						each tweet (no starting space required), or
+						a list of potential suffixes from which one
+						will be chosen at random. Pass None if you
+						don't want a suffix. Default value is None.
 		
 		maxconvdepth	-	Integer that determines the maximal depth of the
 						conversations that this bot is allowed to reply
@@ -604,12 +608,13 @@ class MarkovBot():
 		
 		database		-	A string that indicates the name of the
 						specific database that you want to use to
-						generate tweets, or u'default' to use the
-						default database. You can also use the
-						string 'random-database' to make the bot
-						choose one of the databases at random. Note
-						that it will not randomly choose 'default'
-						if 'default is empty. (default = 'default')
+						generate tweets, or a list of database names
+						from which one will be selected at random,
+						or u'default' to use the default database.
+						You can also use the string 'random-database'
+						to select one of the non-empty databases
+						that are available to this bot. Default
+						value is 'default'.
 
 		days			-	Numeric value (int or float) that indicates the
 						amount of days between each tweet.
@@ -627,13 +632,17 @@ class MarkovBot():
 						tweet interval of 12 hours, will result inactual
 						intervals between 11.5 and 12.5 hours.
 
-		prefix		-	A string that will be added at the start of each
-						tweet (no ending space required). Pass None if
-						you don't want a prefix. Default value is None.
+		prefix		-	A string that will be added at the start of
+						each tweet (no ending space required), or a
+						list of potential prefixes from which one
+						will be chosen at random. Pass None if you
+						don't want a prefix. Default value is None.
 
-		suffix		-	A string that will be added at the end of each
-						tweet (no starting space required). Pass None if
-						you don't want a suffix. Default value is None.
+		suffix		-	A string that will be added at the end of
+						each tweet (no starting space required), or
+						a list of potential suffixes from which one
+						will be chosen at random. Pass None if you
+						don't want a suffix. Default value is None.
 
 		keywords		-	A list of words from which one is randomly
 						selected and used to attempt to start a tweet
@@ -928,12 +937,41 @@ class MarkovBot():
 					if self._tweetprefix == None:
 						prefix = u'@%s' % (tweet[u'user'][u'screen_name'])
 					else:
-						prefix = u'@%s %s' % (tweet[u'user'][u'screen_name'], \
-							self._tweetprefix)
+						# Use the specified prefix.
+						if type(self._tweetprefix) in [str, unicode]:
+							prefix = u'@%s %s' % \
+								(tweet[u'user'][u'screen_name'], \
+								self._tweetprefix)
+						# Randomly choose one of the specified
+						# prefixes.
+						elif type(self._tweetprefix) in [list, tuple]:
+							prefix = u'@%s %s' % \
+								(tweet[u'user'][u'screen_name'], \
+								random.choice(self._tweetprefix))
+						# Fall back on the default option.
+						else:
+							prefix = u'@%s' % (tweet[u'user'][u'screen_name'])
+							self._message(u'_autoreply', \
+								u"Could not recognise the type of prefix '%s'; using no prefix." % (self._tweetprefix))
+
+					# Construct a suffix for this tweet. We use the
+					# specified prefix, which can also be None. Or
+					# we randomly select one from a list of potential
+					# suffixes.
+					if self._tweetsuffix == None:
+						suffix = copy.deepcopy(self._tweetprefix)
+					elif type(self._tweetsuffix) in [str, unicode]:
+						suffix = copy.deepcopy(self._tweetprefix)
+					elif type(self._tweetprefix) in [list, tuple]:
+						suffix = random.choice(self._tweetprefix)
+					else:
+						suffix = None
+						self._message(u'_autoreply', \
+							u"Could not recognise the type of suffix '%s'; using no suffix." % (self._tweetsuffix))
 
 					# Construct a new tweet
 					response = self._construct_tweet(database=database, \
-						seedword=None, prefix=prefix, suffix=self._tweetsuffix)
+						seedword=None, prefix=prefix, suffix=suffix)
 
 					# Acquire the twitter lock
 					self._tlock.acquire(True)
@@ -994,13 +1032,52 @@ class MarkovBot():
 						database = random.choice(self.data.keys())
 					self._message(u'_autotweet', \
 						u'Randomly chose database: %s' % (database))
+				# If the database is a list of alternatives, randomly
+				# select one.
+				elif type(self._tweetingdatabase) in [list, tuple]:
+					database = random.choice(self._tweetingdatabase)
+				# If the specified database is a string, use it.
+				elif type(self._tweetingdatabase) in [str, unicode]:
+					database = copy.deepcopy(self._tweetingdatabase)
+				# Fall back on the default option.
 				else:
-					database = self._tweetingdatabase
+					self._message(u'_autotweet', \
+						u"Could not recognise the type of database '%s'; using '%s' instead." % (self._tweetingdatabase, u'default'))
+					database = u'default'
+
+				# Construct a prefix for this tweet. We use the
+				# specified prefix, which can also be None. Or
+				# we randomly select one from a list of potential
+				# prefixes.
+				if self._tweetingprefix == None:
+					prefix = copy.deepcopy(self._tweetingprefix)
+				elif type(self._tweetingprefix) in [str, unicode]:
+					prefix = copy.deepcopy(self._tweetingprefix)
+				elif type(self._tweetingprefix) in [list, tuple]:
+					prefix = random.choice(self._tweetingprefix)
+				else:
+					prefix = None
+					self._message(u'_autotweet', \
+						u"Could not recognise the type of prefix '%s'; using no suffix." % (self._tweetingprefix))
+
+				# Construct a suffix for this tweet. We use the
+				# specified suffix, which can also be None. Or
+				# we randomly select one from a list of potential
+				# suffixes.
+				if self._tweetingsuffix == None:
+					suffix = copy.deepcopy(self._tweetingsuffix)
+				elif type(self._tweetingsuffix) in [str, unicode]:
+					suffix = copy.deepcopy(self._tweetingsuffix)
+				elif type(self._tweetingsuffix) in [list, tuple]:
+					suffix = random.choice(self._tweetingsuffix)
+				else:
+					suffix = None
+					self._message(u'_autotweet', \
+						u"Could not recognise the type of suffix '%s'; using no suffix." % (self._tweetingsuffix))
 
 				# Construct a new tweet
 				newtweet = self._construct_tweet(database=database, \
-					seedword=kw, prefix=self._tweetingprefix, \
-					suffix=self._tweetingsuffix)
+					seedword=kw, prefix=prefix, suffix=suffix)
 
 				# Acquire the twitter lock
 				self._tlock.acquire(True)
