@@ -461,17 +461,22 @@ class MarkovBot():
 		
 		database		-	A string that indicates the name of the
 						specific database that you want to use to
-						generate tweets, or u'default' to use the
-						default database. You can also use the
-						string 'auto-language' to make the bot
-						automatically detect the language of Tweets,
-						and to reply using a database with the same
-						name (e.g. 'en' for English, or 'de' for
-						German). Note that this option relies on
-						Twitter's language-detection algorithms. If
-						a language cannot be identified, the
-						fall-back will be 'en', or 'default' when
-						'en' is not available. (default = 'default')
+						generate tweets, or a list of database names
+						from which one will be selected at random,
+						or u'default' to use the default database.
+						You can also use the string 'auto-language'
+						to make the bot automatically detect the
+						language of Tweets, and to reply using a
+						database with the same name (e.g. 'en' for
+						English, or 'de' for German). Note that this
+						option relies on Twitter's language-detection
+						 algorithms. If a language cannot be 
+						identified, the fall-back will be 'en', or
+						'default' when 'en' is not available. Another
+						option is to use database='random-database',
+						which will select one of the non-empty
+						databases that are available to this bot.
+						(default = 'default')
 
 		keywords		-	A list of words that the bot should recognise in
 						tweets that it finds through its targetstring.
@@ -849,6 +854,48 @@ class MarkovBot():
 						else:
 							database = u'default'
 							self._message(u'_autoreply', u"There was no database for detected language '%s', nor for 'en', so I defaulted to '%s'." % (lang, database))
+					# Randomly choose a database if a random database
+					# was requested. Never use an empty database,
+					# though (the while loop prevents this).
+					elif self._autoreply_database == u'random-database':
+						database = random.choice(self.data.keys())
+						while self.data[database] == {}:
+							database = random.choice(self.data.keys())
+						self._message(u'_autoreply', \
+							u'Randomly chose database: %s' % (database))
+					# Randomly choose a database out of a list of
+					# potential databases.
+					elif type(self._autoreply_database) in [list, tuple]:
+						database = random.choice(self._autoreply_database)
+						self._message(u'_autoreply', \
+							u'Randomly chose database: %s' % (database))
+					# Use the preferred database.
+					elif type(self._autoreply_database) in [str, unicode]:
+						database = copy.deepcopy(self._autoreply_database)
+						self._message(u'_autoreply', \
+							u'Using database: %s' % (database))
+					# If none of the above options apply, default to
+					# the default database.
+					else:
+						database = u'default'
+						self._message(u'_autoreply', \
+							u'Defaulted to database: %s' % (database))
+					
+					# If the selected database is not a string, or if
+					# it is empty, then fall back on the default
+					# database.
+					if type(database) not in [str, unicode]:
+						self._message(u'_autoreply', \
+							u"Selected database '%s' is invalid, defaulting to: %s" % (database, u'default'))
+						database = u'default'
+					elif database not in self.data.keys():
+						self._message(u'_autoreply', \
+							u"Selected database '%s' does not exist, defaulting to: %s" % (database, u'default'))
+						database = u'default'
+					elif self.data[database] == {}:
+						self._message(u'_autoreply', \
+							u"Selected database '%s' is empty, defaulting to: %s" % (database, u'default'))
+						database = u'default'
 	
 					# Separate the words in the tweet
 					tw = tweet[u'text'].split()
