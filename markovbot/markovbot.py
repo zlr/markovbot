@@ -86,7 +86,7 @@ class MarkovBot():
 		self._lasttweetin = None
 		self._lasttweetout = None
 		
-		# Start the autoreplying thread
+		# Prepare the autoreplying thread
 		self._autoreplying = False
 		self._autoreply_database = None
 		self._targetstring = None
@@ -99,11 +99,10 @@ class MarkovBot():
 			self._autoreplythread = Thread(target=self._autoreply)
 			self._autoreplythread.daemon = True
 			self._autoreplythread.name = u'autoreplier'
-			self._autoreplythread.start()
 		else:
 			self._autoreplythreadlives = False
 		
-		# Start the tweeting thread
+		# Prepare the tweeting thread
 		self._tweetingdatabase = None
 		self._autotweeting = False
 		self._tweetinginterval = None
@@ -116,16 +115,20 @@ class MarkovBot():
 			self._tweetingthread = Thread(target=self._autotweet)
 			self._tweetingthread.daemon = True
 			self._tweetingthread.name = u'autotweeter'
-			self._tweetingthread.start()
 		else:
 			self._tweetingthreadlives = False
 		
-		# Start the self-examination Thread (periodically checks whether
+		# Prepare the self-examination Thread (periodically checks whether
 		# all Threads are still alive, and revives any dead ones.)
 		self._selfexaminationthreadlives = True
-		self._selfexaminationthread = Thread(self._self_examination)
+		self._selfexaminationthread = Thread(target=self._self_examination)
 		self._selfexaminationthread.daemon = True
 		self._selfexaminationthread.name = u'selfexaminer'
+		
+		# Start all Threads.
+		if IMPTWITTER:
+			self._autoreplythread.start()
+			self._tweetingthread.start()
 		self._selfexaminationthread.start()
 			
 
@@ -796,6 +799,12 @@ class MarkovBot():
 		
 		# Run indefinitively
 		while self._autoreplythreadlives:
+
+			# Wait a bit before rechecking whether autoreplying should be
+			# started. It's highly unlikely the bot will miss something if
+			# it is a second late, and checking continuously is a waste of
+			# resource.
+			time.sleep(1)
 			
 			# Check whether the Threads are still alive, and revive if
 			# they aren't. (NOTE: This will not actually work if the
@@ -804,12 +813,6 @@ class MarkovBot():
 			# Threads if they are dead. The other Threads also have _cpr
 			# calls, which serve to revive this Thread. Brilliant, no?)
 			self._cpr()
-
-			# Wait a bit before rechecking whether autoreplying should be
-			# started. It's highly unlikely the bot will miss something if
-			# it is a second late, and checking continuously is a waste of
-			# resource.
-			time.sleep(1)
 
 			# Only start when the bot logs in to twitter, and when a
 			# target string is available
@@ -1047,15 +1050,15 @@ class MarkovBot():
 								u"Could not recognise the type of prefix '%s'; using no prefix." % (self._tweetprefix))
 
 					# Construct a suffix for this tweet. We use the
-					# specified prefix, which can also be None. Or
+					# specified suffix, which can also be None. Or
 					# we randomly select one from a list of potential
 					# suffixes.
 					if self._tweetsuffix == None:
-						suffix = copy.deepcopy(self._tweetprefix)
+						suffix = copy.deepcopy(self._tweetsuffix)
 					elif type(self._tweetsuffix) in [str, unicode]:
-						suffix = copy.deepcopy(self._tweetprefix)
-					elif type(self._tweetprefix) in [list, tuple]:
-						suffix = random.choice(self._tweetprefix)
+						suffix = copy.deepcopy(self._tweetsuffix)
+					elif type(self._tweetsuffix) in [list, tuple]:
+						suffix = random.choice(self._tweetsuffix)
 					else:
 						suffix = None
 						self._message(u'_autoreply', \
@@ -1106,6 +1109,12 @@ class MarkovBot():
 
 		# Run indefinitively
 		while self._tweetingthreadlives:
+
+			# Wait a bit before rechecking whether tweeting should be
+			# started. It's highly unlikely the bot will miss something if
+			# it is a second late, and checking continuously is a waste of
+			# resources.
+			time.sleep(1)
 			
 			# Check whether the Threads are still alive, and revive if
 			# they aren't. (NOTE: This will not actually work if the
@@ -1114,12 +1123,6 @@ class MarkovBot():
 			# Threads if they are dead. The other Threads also have _cpr
 			# calls, which serve to revive this Thread. Brilliant, no?)
 			self._cpr()
-
-			# Wait a bit before rechecking whether tweeting should be
-			# started. It's highly unlikely the bot will miss something if
-			# it is a second late, and checking continuously is a waste of
-			# resources.
-			time.sleep(1)
 
 			# Only start when the bot logs in to twitter, and when tweeting
 			# is supposed to happen
