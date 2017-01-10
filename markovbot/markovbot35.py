@@ -507,7 +507,7 @@ class MarkovBot():
 			# tuple.
 			elif type(respdict[targetstring]) in [list,tuple]:
 				# Copy the values, convert them all to unicode.
-				responses = map(unicode, list(respdict[targetstring]))
+				responses = map(str, list(respdict[targetstring]))
 				# Add the responses to the database.
 				self.data[u'simpleresponse'][targetstring] = \
 					tuple(responses)
