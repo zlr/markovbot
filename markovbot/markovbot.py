@@ -212,7 +212,7 @@ class MarkovBot():
 		attempts = 0
 		
 		# Make a single keyword into a list of them
-		if type(seedword) in [str,unicode]:
+		if type(seedword) in [str]:
 			seedword = [seedword]
 
 		# Run until a proper sentence is produced
@@ -220,15 +220,18 @@ class MarkovBot():
 			
 			try:
 				# Get all word duos in the database
-				keys = self.data[database].keys()
+				keys = self.data[database]
+				key_list=list(keys)
+				#print(key_list)
+				#print(keys)
 				# Shuffle the word duos, so that not the same is
 				# found every time
-				random.shuffle(keys)
+				random.shuffle(list(keys))
 				
 				# Choose a random seed to fall back on when seedword does
 				# not occur in the keys, or if seedword==None
-				seed = random.randint(0, len(keys))
-				w1, w2 = keys[seed]
+				seed = random.randint(0, len(list(keys)))
+				w1, w2 = key_list[seed]
 				
 				# Try to find a word duo that contains the seed word
 				if seedword != None:
@@ -237,7 +240,7 @@ class MarkovBot():
 						# Loop through all keys (these are (w1,w2)
 						# tuples of words that occurred together in the
 						# text used to generate the database
-						for i in xrange(len(keys)):
+						for i in range(len(keys)):
 							# If the seedword is only one word, check
 							# if it is part of the key (a word duo)
 							# If the seedword is a combination of words,
@@ -259,7 +262,7 @@ class MarkovBot():
 				words = []
 				
 				# Loop to get as many words as requested
-				for i in xrange(maxlength):
+				for i in range(maxlength):
 					# Add the current first word
 					words.append(w1)
 					# Generare a new first and second word, based on the
@@ -277,7 +280,7 @@ class MarkovBot():
 				# Capitalise the first word, capitalise all single 'i's,
 				# and attempt to capitalise letters that occur after a
 				# full stop.
-				for i in xrange(0, len(words)):
+				for i in range(0, len(words)):
 					if (i == 0) or (u'.' in words[i-1]) or \
 						(words[i] == u'i'):
 						words[i] = words[i].capitalize()
@@ -287,7 +290,7 @@ class MarkovBot():
 				# checking which is the last word that contains
 				# relevant interpunction.
 				ei = 0
-				for i in xrange(len(words)-1, 0, -1):
+				for i in range(len(words)-1, 0, -1):
 					# Check whether the current word ends with
 					# relevant interpunction. If it does, use the
 					# current as the last word. If the interpunction
@@ -378,7 +381,8 @@ class MarkovBot():
 			# Read the contents of the file
 			contents = f.read()
 		# Unicodify the contents
-		contents = contents.decode(u'utf-8')
+		contents = contents
+		#.decode(u'utf-8')
 		
 		# Split the words into a list
 		words = contents.split()
@@ -490,12 +494,12 @@ class MarkovBot():
 		# database.
 		for targetstring in respdict.keys():
 			# Skip non-text values.
-			if type(targetstring) not in [str, unicode]:
+			if type(targetstring) not in [str]:
 				self._message(u'set_simple_responses', \
 					u"Key '%s' in passed respdict is not a string or unicode type, and thus will not be included in the database." % (targetstring))
 				continue
 			# Check if the value for this targetstring is text.
-			if type(respdict[targetstring]) in [str,unicode]:
+			if type(respdict[targetstring]) in [str]:
 				# Convert to a tuple, and add to the database.
 				self.data[u'simpleresponse'][targetstring] = \
 					(respdict[targetstring])
@@ -974,7 +978,7 @@ class MarkovBot():
 						self._message(u'_autoreply', \
 							u'Randomly chose database: %s' % (database))
 					# Use the preferred database.
-					elif type(self._autoreply_database) in [str, unicode]:
+					elif type(self._autoreply_database) in [str]:
 						database = copy.deepcopy(self._autoreply_database)
 						self._message(u'_autoreply', \
 							u'Using database: %s' % (database))
@@ -988,7 +992,7 @@ class MarkovBot():
 					# If the selected database is not a string, or if
 					# it is empty, then fall back on the default
 					# database.
-					if type(database) not in [str, unicode]:
+					if type(database) not in [str]:
 						self._message(u'_autoreply', \
 							u"Selected database '%s' is invalid, defaulting to: %s" % (database, u'default'))
 						database = u'default'
@@ -1033,7 +1037,7 @@ class MarkovBot():
 						prefix = u'@%s' % (tweet[u'user'][u'screen_name'])
 					else:
 						# Use the specified prefix.
-						if type(self._tweetprefix) in [str, unicode]:
+						if type(self._tweetprefix) in [str]:
 							prefix = u'@%s %s' % \
 								(tweet[u'user'][u'screen_name'], \
 								self._tweetprefix)
@@ -1055,7 +1059,7 @@ class MarkovBot():
 					# suffixes.
 					if self._tweetsuffix == None:
 						suffix = copy.deepcopy(self._tweetsuffix)
-					elif type(self._tweetsuffix) in [str, unicode]:
+					elif type(self._tweetsuffix) in [str]:
 						suffix = copy.deepcopy(self._tweetsuffix)
 					elif type(self._tweetsuffix) in [list, tuple]:
 						suffix = random.choice(self._tweetsuffix)
@@ -1093,7 +1097,7 @@ class MarkovBot():
 						# Store a copy of the latest outgoing tweet, for
 						# debugging purposes
 						self._lasttweetout = copy.deepcopy(resp)
-					except Exception, e:
+					except e:
 						self._error(u'_autoreply', u"Failed to post a reply: '%s'" % (e))
 					# Release the twitter lock
 					self._tlock.release()
@@ -1132,7 +1136,7 @@ class MarkovBot():
 				kw = None
 				if self._tweetingkeywords != None:
 					if type(self._tweetingkeywords) in \
-						[str, unicode]:
+						[str]:
 						kw = self._tweetingkeywords
 					else:
 						kw = random.choice(self._tweetingkeywords)
@@ -1150,7 +1154,7 @@ class MarkovBot():
 				elif type(self._tweetingdatabase) in [list, tuple]:
 					database = random.choice(self._tweetingdatabase)
 				# If the specified database is a string, use it.
-				elif type(self._tweetingdatabase) in [str, unicode]:
+				elif type(self._tweetingdatabase) in [str]:
 					database = copy.deepcopy(self._tweetingdatabase)
 				# Fall back on the default option.
 				else:
@@ -1164,7 +1168,7 @@ class MarkovBot():
 				# prefixes.
 				if self._tweetingprefix == None:
 					prefix = copy.deepcopy(self._tweetingprefix)
-				elif type(self._tweetingprefix) in [str, unicode]:
+				elif type(self._tweetingprefix) in [str]:
 					prefix = copy.deepcopy(self._tweetingprefix)
 				elif type(self._tweetingprefix) in [list, tuple]:
 					prefix = random.choice(self._tweetingprefix)
@@ -1179,7 +1183,7 @@ class MarkovBot():
 				# suffixes.
 				if self._tweetingsuffix == None:
 					suffix = copy.deepcopy(self._tweetingsuffix)
-				elif type(self._tweetingsuffix) in [str, unicode]:
+				elif type(self._tweetingsuffix) in [str]:
 					suffix = copy.deepcopy(self._tweetingsuffix)
 				elif type(self._tweetingsuffix) in [list, tuple]:
 					suffix = random.choice(self._tweetingsuffix)
