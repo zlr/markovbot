@@ -18,4 +18,11 @@
 # You should have received a copy of the GNU General Public License
 # along with markovbot.  If not, see <http://www.gnu.org/licenses/>.
 
-from markovbot import MarkovBot
+import sys
+
+# Check what version we're currently running, and import the corresponding
+# MarkovBot class.
+if sys.version_info[0] == 3:
+    from markovbot35 import MarkovBot
+else:
+    from markovbot27 import MarkovBot
