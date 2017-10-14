@@ -233,7 +233,7 @@ class MarkovBot():
 				seed = random.randint(0, len(list(keys)))
 				w1, w2 = key_list[seed]
 				
-				# Try to find a word duo that contains the seed word
+				# Try to find a word duo that contains the seedworded word
 				if seedword != None:
 					# Loop through all potential seed words
 					while len(seedword) > 0:
@@ -245,11 +245,11 @@ class MarkovBot():
 							# if it is part of the key (a word duo)
 							# If the seedword is a combination of words,
 							# check if they are the same as the key
-							if seedword[0] in keys[i] or \
+							if seedword[0] in key_list[i] or \
 								(tuple(seedword[0].split(u' ')) == \
-								keys[i]):
+								key_list[i]):
 								# Choose the words
-								w1, w2 = keys[i]
+								w1, w2 = key_list[i]
 								# Get rid of the seedwords
 								seedword = []
 								break
