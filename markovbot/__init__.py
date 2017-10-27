@@ -23,6 +23,12 @@ import sys
 # Check what version we're currently running, and import the corresponding
 # MarkovBot class.
 if sys.version_info[0] == 3:
-    from markovbot.markovbot35 import MarkovBot
+    try:
+        from markovbot35 import MarkovBot
+    except:
+        from markovbot.markovbot35 import MarkovBot
 else:
-    from markovbot.markovbot27 import MarkovBot
+    try:
+        from markovbot27 import MarkovBot
+    except:
+        from markovbot.markovbot27 import MarkovBot
