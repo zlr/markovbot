@@ -43,7 +43,7 @@ tweetbot.read(book)
 
 # Print your text to the console
 
-while time.sleep(600):
+while time.sleep(60):
     try:
         tweet = tweetbot.generate_text(25, seedword=[u'loser', u'sad', u'china'])
         print(u'\ntweetbot says: "%s"' % (tweet))
