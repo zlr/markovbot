@@ -28,7 +28,8 @@ if sys.version_info[0] == 3:
     except:
         from markovbot.markovbot35 import MarkovBot
 else:
-    try:
-        from markovbot27 import MarkovBot
-    except:
-        from markovbot.markovbot27 import MarkovBot
+    # try:
+    #     from markovbot27 import MarkovBot
+    # except:
+    #     from markovbot.markovbot27 import MarkovBot
+    raise("Need python 3.+")
