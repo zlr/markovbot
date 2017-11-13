@@ -27,7 +27,7 @@ tweetbot.read(book)
 # 	should attempt to use to start its text. It's nothing fancy: the bot will
 # 	simply try the first, and move on to the next if he can't find something
 # 	that works.
-my_first_text = tweetbot.generate_text(25, seedword=[u'loser', u'sad', u'china'])
+my_first_text = tweetbot.generate_text(25, seedword=[u'loser', u'sad', u'china', u'covfefe'])
 
 # Print your text to the console
 print(u'\ntweetbot says: "%s"' % (my_first_text))
