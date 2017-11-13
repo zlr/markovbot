@@ -1,6 +1,6 @@
 import os
 import time
-import tweetpy
+import tweepy
 
 from markovbot import MarkovBot
 
