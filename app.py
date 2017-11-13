@@ -4,6 +4,11 @@ import time
 from markovbot import MarkovBot
 
 
+CONSUMER_KEY = os.environ["CONSUMER_KEY"]
+CONSUMER_SECRET = os.environ["CONSUMER_SECRET"]
+ACCESS_KEY = os.environ["ACCESS_KEY"]
+ACCESS_SECRET = os.environ["ACCESS_SECRET"]
+
 # # # # #
 # INITIALISE
 
@@ -45,13 +50,13 @@ print(u'\ntweetbot says: "%s"' % (my_first_text))
 # that it is NOT SAFE to put your keys and tokens in a plain-text script!
 
 # Consumer Key (API Key)
-cons_key = ''
+cons_key = CONSUMER_KEY
 # Consumer Secret (API Secret)
-cons_secret = ''
+cons_secret = CONSUMER_SECRET
 # Access Token
-access_token = ''
+access_token = ACCESS_KEY
 # Access Token Secret
-access_token_secret = ''
+access_token_secret = ACCESS_SECRET
 
 # Log in to Twitter
 tweetbot.twitter_login(cons_key, cons_secret, access_token, access_token_secret)
