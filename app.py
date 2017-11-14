@@ -5,10 +5,12 @@ import logging
 from markovbot import MarkovBot
 
  
-logger = logging.getLogger('stickybot')
+logger = logging.getLogger('markovbot')
 logger.setLevel(logging.DEBUG)
 ch = logging.StreamHandler()
 logger.addHandler(ch)
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+ch.setFormatter(formatter)
 
 
 CONSUMER_KEY = os.environ["CONSUMER_KEY"]
