@@ -62,7 +62,7 @@ except:
 
 while True:
     try:
-        tweet = tweetbot.generate_text(25, seedword=[u'loser', u'sad', u'china'])
+        tweet = tweetbot.generate_text(25, seedword=None)
         logger.debug('tweetbot says: ' + tweet)
         api.update_status(tweet)
         logger.debug("Sleeping for " + str(SLEEPING))
