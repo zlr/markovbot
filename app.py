@@ -20,9 +20,13 @@ SLEEPING = int(os.environ["SLEEPING"])
 
 
 # use tweetpy instead 
-auth = tweepy.OAuthHandler(CONSUMER_KEY, CONSUMER_SECRET)
-auth.set_access_token(ACCESS_KEY, ACCESS_SECRET)
-api = tweepy.API(auth)
+try:
+    auth = tweepy.OAuthHandler(CONSUMER_KEY, CONSUMER_SECRET)
+    auth.set_access_token(ACCESS_KEY, ACCESS_SECRET)
+    api = tweepy.API(auth)
+    logger.debug("Successfull auth")
+except tweepy.TweepError as e:
+    logger.debug("Failed to auth " + e.response.text)
 
 # # # # #
 # INITIALISE
@@ -57,7 +61,7 @@ except:
 while True:
     try:
         tweet = tweetbot.generate_text(25, seedword=[u'loser', u'sad', u'china'])
-        logging.debug('tweetbot says: ' + tweet)
+        logger.debug('tweetbot says: ' + tweet)
         api.update_status(tweet)
         logger.debug("Sleeping for " + str(SLEEPING))
         time.sleep(SLEEPING)
