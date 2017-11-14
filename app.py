@@ -1,14 +1,23 @@
 import os
 import time
 import tweepy
-
+import logging
 from markovbot import MarkovBot
+
+ 
+logger = logging.getLogger('stickybot')
+logger.setLevel(logging.DEBUG)
+ch = logging.StreamHandler()
+logger.addHandler(ch)
 
 
 CONSUMER_KEY = os.environ["CONSUMER_KEY"]
 CONSUMER_SECRET = os.environ["CONSUMER_SECRET"]
 ACCESS_KEY = os.environ["ACCESS_KEY"]
 ACCESS_SECRET = os.environ["ACCESS_SECRET"]
+TWEETS = os.environ["TWEETS"]
+SLEEPING = int(os.environ["SLEEPING"])
+
 
 # use tweetpy instead 
 auth = tweepy.OAuthHandler(CONSUMER_KEY, CONSUMER_SECRET)
@@ -21,13 +30,15 @@ api = tweepy.API(auth)
 # Initialise a MarkovBot instance
 tweetbot = MarkovBot()
 
-# Get the current directory's path
-dirname = os.path.dirname(os.path.abspath(__file__))
-# Construct the path to the book
-book = os.path.join(dirname, u'cleaner.trumptweets.txt')
-# Make your bot read the book!
-tweetbot.read(book)
-
+try:
+    # Get the current directory's path
+    dirname = os.path.dirname(os.path.abspath(__file__))
+    # Construct the path to the book
+    book = os.path.join(dirname, TWEETS)
+    # Make your bot read the book!
+    tweetbot.read(book)
+except:
+    logging.debug("Failed to load book " + TWEETS)
 
 
 
@@ -43,12 +54,16 @@ tweetbot.read(book)
 
 # Print your text to the console
 
-while time.sleep(60):
+while True:
     try:
         tweet = tweetbot.generate_text(25, seedword=[u'loser', u'sad', u'china'])
-        print(u'\ntweetbot says: "%s"' % (tweet))
+        logging.debug('tweetbot says: ' + tweet)
         api.update_status(tweet)
-    except tweepy.TweepError:
+        logger.debug("Sleeping for " + str(SLEEPING))
+        time.sleep(SLEEPING)
+        logger.debug("Finished sleeping")
+    except tweepy.TweepError as e:
+        logger.debug("Teweepy Error " + e.response.text)
         pass
 
 
